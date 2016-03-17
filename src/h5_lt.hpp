@@ -551,36 +551,28 @@ static void make_dataset_from_typed_array(const int32_t &group_id, const char *d
 
 static void make_dataset_from_array(const int32_t &group_id, const char *dset_name, Handle<Array> array, Handle<Object> /*options*/) {
     hid_t dcpl=H5Pcreate(H5P_DATASET_CREATE);
-    int rank=1;
-    std::unique_ptr<hsize_t> countSpace(new hsize_t[rank]);
-    countSpace.get()[0]=1;
-    std::unique_ptr<hsize_t> count(new hsize_t[rank]);
-    count.get()[0]=array->Length();
-    hid_t memspace_id = H5Screate_simple (rank, countSpace.get(), NULL);
+    const hsize_t count = array->Length();
+    const int rank=1;
+    hid_t memspace_id = H5Screate_simple (rank, &count, NULL);
     hid_t type_id = H5Tcopy(H5T_C_S1);
     H5Tset_size(type_id, H5T_VARIABLE);
-    hid_t arraytype_id =H5Tarray_create( type_id,  rank, count.get() );
-    hid_t did = H5Dcreate(group_id, dset_name, arraytype_id, memspace_id, H5P_DEFAULT, dcpl, H5P_DEFAULT);
-    std::unique_ptr<char*> vl(new char*[array->Length()]);
-    for(unsigned int arrayIndex=0;arrayIndex<array->Length();arrayIndex++){
-        String::Utf8Value buffer (array->Get(arrayIndex)->ToString());
-        std::string s(*buffer);
-        ////std::cout<<s<<std::endl;
-        vl.get()[arrayIndex]=new char[s.length()+1];
-        std::strncpy(vl.get()[arrayIndex], s.c_str(), s.length()+1);
+    hid_t did = H5Dcreate(group_id, dset_name, type_id, memspace_id, H5P_DEFAULT, dcpl, H5P_DEFAULT);
 
+    std::unique_ptr<char* []> vl(new char*[count]);
+    std::vector<std::unique_ptr<String::Utf8Value>> string_values;
+
+    for(unsigned int arrayIndex=0; arrayIndex<count; arrayIndex++) {
+        auto value = std::make_unique<String::Utf8Value>(array->Get(arrayIndex));
+        vl.get()[arrayIndex] = **value;
+        string_values.emplace_back(std::move(value));
     }
-        //if(arrayIndex==0){
-    //std::cout<<"write the data "<<(vl.get())<<std::endl;
-    herr_t err=H5Dwrite( did, arraytype_id, memspace_id, H5S_ALL, H5P_DEFAULT, vl.get() );
-    //std::cout<<"wrote the data "<<err<<std::endl;
+
+    herr_t err=H5Dwrite( did, type_id, memspace_id, H5S_ALL, H5P_DEFAULT, vl.get() );
     if(err<0)
     {
         v8::Isolate::GetCurrent()->ThrowException(v8::Exception::SyntaxError(String::NewFromUtf8(v8::Isolate::GetCurrent(), "failed to make var len dataset")));
-        return;
     }
-        //}
-    H5Tclose(arraytype_id);
+
     H5Tclose(type_id);
     H5Dclose(did);
     H5Sclose(memspace_id);
