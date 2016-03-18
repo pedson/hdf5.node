@@ -563,7 +563,7 @@ static void make_dataset_from_array(const int32_t &group_id, const char *dset_na
     std::vector<std::unique_ptr<String::Utf8Value>> string_values;
 
     for(unsigned int arrayIndex=0; arrayIndex<count; arrayIndex++) {
-        auto value = std::make_unique<String::Utf8Value>(array->Get(arrayIndex));
+        std::unique_ptr<String::Utf8Value> value(new String::Utf8Value(array->Get(arrayIndex)));
         vl.get()[arrayIndex] = **value;
         string_values.emplace_back(std::move(value));
     }
