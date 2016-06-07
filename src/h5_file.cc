@@ -8,6 +8,7 @@
 #include <sstream>
 #include <fstream>
 #include <vector>
+#include <iostream>
 
 #include "file.h"
 #include "group.h"
@@ -51,6 +52,7 @@ namespace NodeHDF5 {
             error=true;
             return;
         }
+        is_open = true;
 
     }
 
@@ -93,12 +95,16 @@ namespace NodeHDF5 {
             v8::Isolate::GetCurrent()->ThrowException(v8::Exception::TypeError(String::NewFromUtf8(v8::Isolate::GetCurrent(), ss.str().c_str())));
             return;
         }
+      is_open = true;
 
     }
 
     File::~File () {
 
+      if (is_open) {
         H5Fclose(id);
+        is_open = false;
+      }
 
     }
 
@@ -429,6 +435,7 @@ namespace NodeHDF5 {
             }
         }
         H5Fclose(file->id);
+        file->is_open = false;
 
         return;
 

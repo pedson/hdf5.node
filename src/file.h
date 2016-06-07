@@ -17,7 +17,7 @@ namespace NodeHDF5 {
 
     using namespace v8;
     using namespace node;
-    
+
 enum HLType {
     HL_TYPE_UNKNOWN = -1,      /* Unknown object type                      */
     HL_TYPE_LITE = 0,             /* Lite dataset interface                        */
@@ -100,9 +100,10 @@ enum H5T {
     protected:
             //std::map<unsigned long, unsigned long> toAccessMap = {{0,H5F_ACC_RDONLY}, {1,H5F_ACC_RDWR}, {2,H5F_ACC_TRUNC}, {3,H5F_ACC_EXCL}, {4,H5F_ACC_DEBUG}, {5,H5F_ACC_CREAT}};
             hid_t plist_id, gcpl, dtpl_id, dapl_id, dcpl_id;
-            
+
             unsigned int compression = 0;
             bool error=false;
+            bool is_open = false;
 
         public:
             static void Initialize (Handle<Object> target);
@@ -110,7 +111,7 @@ enum H5T {
             hid_t getId(){return id;};
             hid_t getGcpl(){return gcpl;};
             std::string getFileName(){return name;};
-        
+
         private:
 //            H5::H5File* m_file;
             File(const char* path);
@@ -128,13 +129,13 @@ enum H5T {
             static void GetNumAttrs (const v8::FunctionCallbackInfo<Value>& args);
             static void GetMemberNamesByCreationOrder (const v8::FunctionCallbackInfo<Value>& args);
             static void GetChildType (const v8::FunctionCallbackInfo<Value>& args);
-        
+
         protected:
             hsize_t getNumObjs();
             int getNumAttrs();
             H5O_type_t childObjType(const char* objname);
             std::string getObjnameByIdx(hsize_t idx);
     };
-    
+
 
 };
