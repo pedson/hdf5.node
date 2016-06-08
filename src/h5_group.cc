@@ -21,6 +21,7 @@ namespace NodeHDF5 {
     Persistent<FunctionTemplate> Filters::Constructor;
 
     Group::Group(hid_t id) : Attributes(id) {
+      is_open = true;
     }
 
     Persistent<FunctionTemplate> Group::Constructor;
@@ -498,6 +499,9 @@ namespace NodeHDF5 {
 
         // unwrap group
         Group* group = ObjectWrap::Unwrap<Group>(args.This());
+        if (!group->is_open) {
+          return;
+        }
 //                if(group->hidPath.size()>0)//std::cout<<"hidPath size: "<<group->hidPath.size()<<std::endl;
         for (std::vector<hid_t>::iterator it = group->hidPath.begin() ; it != group->hidPath.end(); ++it){
 //            if(group->hidPath.size()>0)//std::cout<<"closing hid: "<<*it<<std::endl;
@@ -519,6 +523,7 @@ namespace NodeHDF5 {
 //                args.GetReturnValue().SetUndefined();
                 return;
             }
+        group->is_open = false;
 
         return;
 

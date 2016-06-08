@@ -17,7 +17,7 @@ namespace NodeHDF5 {
 
     using namespace v8;
     using namespace node;
-    
+
 
     class Group : public Attributes {
         friend class File;
@@ -32,7 +32,7 @@ namespace NodeHDF5 {
         private:
             static Persistent<FunctionTemplate> Constructor;
             static void New (const v8::FunctionCallbackInfo<Value>& args);
-            
+
         public:
             Group(hid_t id);
             static void Initialize ();
@@ -56,13 +56,14 @@ namespace NodeHDF5 {
             static void getDatasetType (const v8::FunctionCallbackInfo<Value>& args);
             static void getDatasetAttributes (const v8::FunctionCallbackInfo<Value>& args);
             static void getFilters (const v8::FunctionCallbackInfo<Value>& args);
-            
+
         protected:
             hsize_t getNumObjs();
             int getNumAttrs();
             H5O_type_t childObjType(const char* objname);
             std::string getObjnameByIdx(hsize_t idx);
-            
+            bool is_open;
+
     };
 
 };
