@@ -1182,7 +1182,6 @@ static void read_dataset (const v8::FunctionCallbackInfo<Value>& args)
                 return;
                 break;
           }
-        ////std::cout<<"rank "<<rank<<" "<<bufSize<<" "<<values_dim[0]<<" "<<class_id<<std::endl;
         switch(class_id)
         {
             case H5T_ARRAY:
@@ -1265,7 +1264,7 @@ static void read_dataset (const v8::FunctionCallbackInfo<Value>& args)
                         args.GetReturnValue().SetUndefined();
                         return;
                     }
-    //                //std::cout<<"c side\n"<<buffer<<std::endl;
+                    //std::cout<<"c side\n"<<buffer<<std::endl;
                     args.GetReturnValue().Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), buffer.c_str(), String::kNormalString, theSize));
                 }
                 H5Tclose(t);
@@ -1288,11 +1287,16 @@ static void read_dataset (const v8::FunctionCallbackInfo<Value>& args)
                     type_id=H5T_NATIVE_FLOAT;
                     buffer = Float32Array::New(arrayBuffer, 0, theSize);
                 }
-//                else if(class_id==H5T_INTEGER && bufSize==8)
-//                {
-//                    type_id=H5T_NATIVE_LLONG;
-//                    buffer = int64Array::New(arrayBuffer, 0, (size_t)values_dim[0]);
-//                }
+                else if(class_id==H5T_INTEGER && bufSize==8)
+                {
+                    type_id=H5T_NATIVE_LLONG;
+                    Handle<Object> int64Buffer = node::Buffer::New(v8::Isolate::GetCurrent(), bufSize * theSize).ToLocalChecked();
+                    H5LTread_dataset (args[0]->ToInt32()->Value(), *dset_name, type_id, (char*)node::Buffer::Data(int64Buffer) );
+
+                    args.GetReturnValue().Set(int64Buffer);
+                    return;
+
+                }
                 else if(class_id==H5T_INTEGER && bufSize==4)
                 {
                     hid_t h=H5Dopen(args[0]->ToInt32()->Value(), *dset_name, H5P_DEFAULT );
