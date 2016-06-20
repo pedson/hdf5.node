@@ -127,6 +127,7 @@ enum H5T {
             static void Delete (const v8::FunctionCallbackInfo<Value>& args);
             static void Close (const v8::FunctionCallbackInfo<Value>& args);
             static void GetNumAttrs (const v8::FunctionCallbackInfo<Value>& args);
+            static void GetMemberNames (const v8::FunctionCallbackInfo<Value>& args);
             static void GetMemberNamesByCreationOrder (const v8::FunctionCallbackInfo<Value>& args);
             static void GetChildType (const v8::FunctionCallbackInfo<Value>& args);
 

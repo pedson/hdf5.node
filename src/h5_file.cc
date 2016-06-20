@@ -128,6 +128,7 @@ namespace NodeHDF5 {
         NODE_SET_PROTOTYPE_METHOD(t, "delete", Delete);
         NODE_SET_PROTOTYPE_METHOD(t, "flush", Flush);
         NODE_SET_PROTOTYPE_METHOD(t, "close", Close);
+        NODE_SET_PROTOTYPE_METHOD(t, "getMemberNames", GetMemberNames);
         NODE_SET_PROTOTYPE_METHOD(t, "getMemberNamesByCreationOrder", GetMemberNamesByCreationOrder);
         NODE_SET_PROTOTYPE_METHOD(t, "getChildType", GetChildType);
 //        Local<Function> f=t->GetFunction();
@@ -530,6 +531,32 @@ namespace NodeHDF5 {
         std::string name = std::string(name_C);
         delete []name_C;
         return (name);
+    }
+
+    void File::GetMemberNames (const v8::FunctionCallbackInfo<Value>& args) {
+
+        //HandleScope scope;
+
+        // Unwrap group
+        File* file = ObjectWrap::Unwrap<File>(args.This());
+
+        Local<Array> array = Array::New(v8::Isolate::GetCurrent(), file->getNumObjs());
+        uint32_t index = 0;
+        std::vector<std::string> holder;
+        H5G_info_t 		ginfo;                  /* File information */
+
+        /*herr_t ret_value = */H5Gget_info(file->id, &ginfo);
+        //if(ret_value < 0)
+        //   throwException("getNumObjs", "H5Gget_info failed");
+        args.GetReturnValue().Set((uint32_t) ginfo.nlinks);
+
+        for(index=0;index<(uint32_t)ginfo.nlinks;index++)
+        {
+            array->Set(index, v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), file->getObjnameByIdx(index).c_str()));
+        }
+        args.GetReturnValue().Set(array);
+        return;
+
     }
 
     void File::GetMemberNamesByCreationOrder (const v8::FunctionCallbackInfo<Value>& args) {
