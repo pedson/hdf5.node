@@ -1,3 +1,8 @@
 build
 node_modules/
 /lib/binding/
+.idea
+
+# Test generated
+/*.xm*l
+/*.h5

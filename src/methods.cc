@@ -9,9 +9,37 @@
 #include "H5PTpublic.h"
 #include "H5Lpublic.h"
 
-//#include <iostream>
+// #include <iostream>
 
 namespace NodeHDF5 {
+
+    v8::Local<v8::Array> CreateArraysForNextRank(std::vector<hsize_t> max_dims, uint32_t index, std::vector<uint32_t> strideTable, std::vector<uint64_t> iterLoc, double * elements) {
+        v8::Local<v8::Array> array = v8::Array::New(v8::Isolate::GetCurrent(), max_dims[index]);
+
+        if (index == 0) {
+            uint32_t base_offset = 0;
+
+            for (uint32_t index = 0; index < max_dims.size(); index++) {
+                base_offset += strideTable[index] * iterLoc[index];
+            }
+
+            for(unsigned int elementIndex = 0; elementIndex < max_dims[0]; elementIndex++){
+                uint32_t offset = base_offset + (elementIndex * strideTable[0]);
+                array->Set(elementIndex, v8::Number::New(v8::Isolate::GetCurrent(), elements[offset]));
+            }
+
+            return array;
+        }
+
+        for(uint32_t elementIndex = 0; elementIndex < max_dims[index]; elementIndex++) {
+            array->Set(elementIndex, CreateArraysForNextRank(max_dims, index - 1, strideTable, iterLoc, elements));
+            iterLoc[index]++;
+        }
+
+        iterLoc[index] = 0;
+
+       return array;
+    }
 
     void Methods::GetNumAttrs (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
@@ -61,7 +89,7 @@ namespace NodeHDF5 {
 
 //        HandleScope scope;
 
-        // fail out if arguments are not correct
+       // fail out if arguments are not correct
         if (args.Length() != 1 || !args[0]->IsString()) {
 
             v8::Isolate::GetCurrent()->ThrowException(v8::Exception::SyntaxError(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), "expected attribute name")));
@@ -338,7 +366,6 @@ namespace NodeHDF5 {
     }
 
     void Methods::getDatasetAttributes (const v8::FunctionCallbackInfo<v8::Value>& args) {
-
         // fail out if arguments are not correct
         if (args.Length() != 1 || !args[0]->IsString()) {
 
@@ -374,8 +401,12 @@ namespace NodeHDF5 {
             H5Aget_name(attr_id, nameSize+1, (char*)attrName.c_str());
             hid_t attr_type=H5Aget_type(attr_id);
             hid_t space_id = H5Aget_space(attr_id);
+            int rank = H5Sget_simple_extent_ndims(space_id);
             hssize_t num_elements = H5Sget_simple_extent_npoints(space_id);
-            ////std::cout<<"num_elements "<<num_elements<<" "<<H5Tget_size(attr_type)<<" "<<H5Aget_storage_size(attr_id)<<std::endl;
+            //std::unique_ptr<hsize_t[]>  dims = std::make_unique<hsize_t[]>(rank);
+            std::vector<hsize_t> max_dims(rank);
+            H5Sget_simple_extent_dims(space_id, max_dims.data(), NULL);
+            // std::cout<<"rank " <<rank<<" num_elements "<<num_elements<<" type "<<H5Tget_size(attr_type)<<" storage size "<<H5Aget_storage_size(attr_id)<<std::endl;
             switch(H5Tget_class(attr_type))
             {
                 case H5T_BITFIELD:
@@ -477,9 +508,45 @@ namespace NodeHDF5 {
                 }
                     break;
                 case H5T_FLOAT:
-                    double value;
-                    H5Aread(attr_id, attr_type, &value);
-                    attrs->Set(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), attrName.c_str()), v8::Number::New(v8::Isolate::GetCurrent(), value));
+                {
+                    // std::cout<<"H5T_FLOAT "<<std::endl;
+                    std::unique_ptr<double> buf(new double[num_elements]);
+                    H5Aread(attr_id, attr_type, buf.get());
+
+                    if(num_elements>1){
+                        // Old
+
+                        v8::Local<v8::Array> vector=v8::Array::New(v8::Isolate::GetCurrent(), num_elements);
+                        for(unsigned int elementIndex=0;elementIndex<num_elements;elementIndex++){
+                            vector->Set(elementIndex, v8::Number::New(v8::Isolate::GetCurrent(), buf.get()[elementIndex]));
+                        }
+
+                        std::string vector_name(attrName.c_str());
+                        vector_name.append("_vector");
+                        attrs->Set(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), vector_name.c_str()), vector);
+
+                        // New
+
+                        std::vector<uint64_t> iterLoc(rank, 0);
+
+                        std::vector<uint32_t> strideTable(rank, 1);
+
+                        for (uint32_t index = 0; index < (max_dims.size() - 1); index++) {
+                            uint32_t offset = 1;
+
+                            for (uint32_t jndex = index + 1; jndex < max_dims.size(); jndex++) {
+                                offset *= max_dims[jndex];
+                            }
+
+                            strideTable[index] = offset;
+                        }
+
+                        v8::Local<v8::Array> array = CreateArraysForNextRank(max_dims, rank - 1, strideTable, iterLoc, buf.get());
+
+                        attrs->Set(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), attrName.c_str()), array);
+                    }
+                    else attrs->Set(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), attrName.c_str()), v8::Number::New(v8::Isolate::GetCurrent(), buf.get()[0]));
+                }
                     break;
                 case H5T_VLEN:
                 {
