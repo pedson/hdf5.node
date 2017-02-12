@@ -2,7 +2,8 @@
     "variables": {
         "hdf5_home_linux%": "/usr/local",
         "hdf5_home_win%": "C:/Software/hdf5",
-        "hdf5_home_mac%": "/usr/local"
+        "hdf5_home_mac%": "/usr/local",
+        "hdf5_explicit_serial%": ""
     },
     'targets': [
         {
@@ -26,8 +27,8 @@
                 ],
                 'link_settings': {
                     'libraries': [
-                        '-lhdf5_serial',
-                        '-lhdf5_serial_hl'
+                        '-lhdf5<(hdf5_explicit_serial)',
+                        '-lhdf5<(hdf5_explicit_serial)_hl'
                     ],
                     'ldflags': [
                         '-L<(hdf5_home_linux)/lib'
@@ -131,8 +132,8 @@
                 ],
                 'link_settings': {
                     'libraries': [
-                        '-lhdf5_serial',
-                        '-lhdf5_serial_hl'
+                        '-lhdf5<(hdf5_explicit_serial)',
+                        '-lhdf5<(hdf5_explicit_serial)_hl'
                     ],
                     'ldflags': [
                         '-L<(hdf5_home_linux)/lib'
@@ -222,8 +223,8 @@
                 ],
                 'link_settings': {
                     'libraries': [
-                        '-lhdf5_serial',
-                        '-lhdf5_serial_hl'
+                        '-lhdf5<(hdf5_explicit_serial)l',
+                        '-lhdf5<(hdf5_explicit_serial)_hl'
                     ],
                     'ldflags': [
                         '-L<(hdf5_home_linux)/lib'
@@ -313,8 +314,8 @@
                 ],
                 'link_settings': {
                     'libraries': [
-                        '-lhdf5_serial',
-                        '-lhdf5_serial_hl'
+                        '-lhdf5<(hdf5_explicit_serial)',
+                        '-lhdf5<(hdf5_explicit_serial)_hl'
                     ],
                     'ldflags': [
                         '-L<(hdf5_home_linux)/lib'
@@ -406,8 +407,8 @@
                 ],
                 'link_settings': {
                     'libraries': [
-                        '-lhdf5_serial',
-                        '-lhdf5_serial_hl'
+                        '-lhdf5<(hdf5_explicit_serial)',
+                        '-lhdf5<(hdf5_explicit_serial)_hl'
                     ],
                     'ldflags': [
                         '-L<(hdf5_home_linux)/lib'
@@ -497,8 +498,8 @@
                 ],
                 'link_settings': {
                     'libraries': [
-                        '-lhdf5_serial',
-                        '-lhdf5_serial_hl'
+                        '-lhdf5<(hdf5_explicit_serial)',
+                        '-lhdf5<(hdf5_explicit_serial)_hl'
                     ],
                     'ldflags': [
                         '-L<(hdf5_home_linux)/lib'
