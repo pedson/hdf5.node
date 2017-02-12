@@ -223,7 +223,7 @@
                 ],
                 'link_settings': {
                     'libraries': [
-                        '-lhdf5<(hdf5_explicit_serial)l',
+                        '-lhdf5<(hdf5_explicit_serial)',
                         '-lhdf5<(hdf5_explicit_serial)_hl'
                     ],
                     'ldflags': [
