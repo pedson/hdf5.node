@@ -25,7 +25,7 @@ namespace NodeHDF5 {
         static v8::Local<v8::Object> Instantiate (v8::Local<v8::Object> parent, long long value = 0);
         long long Value(){return value;};
 
-    protected:
+    public:
 
         Int64() : Int64(0) {
 
@@ -63,7 +63,7 @@ namespace NodeHDF5 {
 //            args.GetReturnValue().SetUndefined();
 //        };
 
-    protected:
+    public:
         long long value=0;
 
     };

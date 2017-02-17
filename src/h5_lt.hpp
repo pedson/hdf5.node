@@ -10,7 +10,7 @@
 #include <map>
 #include <functional>
 #include <memory>
-//#include <iostream>
+#include <iostream>
 
 #include "file.h"
 #include "group.h"
@@ -107,7 +107,6 @@ namespace NodeHDF5 {
             target->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "readDatasetDatatype"), FunctionTemplate::New(v8::Isolate::GetCurrent(), H5lt::read_dataset_datatype)->GetFunction());
             target->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "readDataset"), FunctionTemplate::New(v8::Isolate::GetCurrent(), H5lt::read_dataset)->GetFunction());
             target->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "readDatasetAsBuffer"), FunctionTemplate::New(v8::Isolate::GetCurrent(), H5lt::readDatasetAsBuffer)->GetFunction());
-            
         }
         
         static unsigned int get_fixed_width(Handle<Object> options) {
@@ -1133,24 +1132,27 @@ namespace NodeHDF5 {
             herr_t err=H5LTget_dataset_ndims(idWrap->Value(), *dset_name, &rank);
             if(err<0)
             {
+                //std::cout << err << std::endl;
                 v8::Isolate::GetCurrent()->ThrowException(v8::Exception::SyntaxError(String::NewFromUtf8(v8::Isolate::GetCurrent(), "failed to find dataset rank")));
                 args.GetReturnValue().SetUndefined();
                 return;
             }
-            std::unique_ptr<hsize_t[]> values_dim(new hsize_t[rank]);
-            err=H5LTget_dataset_info(idWrap->Value(), *dset_name, values_dim.get(), &class_id, &bufSize);
+            std::vector<hsize_t> values_dim(rank);
+            err=H5LTget_dataset_info(idWrap->Value(), *dset_name, values_dim.data(), &class_id, &bufSize);
             if(err<0)
             {
+                //std::cout << err << std::endl;
                 v8::Isolate::GetCurrent()->ThrowException(v8::Exception::SyntaxError(String::NewFromUtf8(v8::Isolate::GetCurrent(), "failed to find dataset info")));
                 args.GetReturnValue().SetUndefined();
                 return;
             }
-            
+
+
             hsize_t theSize=bufSize;
             bool subsetOn=false;
             std::vector<hsize_t> start;
-            std::unique_ptr<hsize_t[]> stride(new hsize_t[rank]);
-            std::unique_ptr<hsize_t[]> count(new hsize_t[rank]);
+            std::vector<hsize_t> stride;
+            std::vector<hsize_t> count;
             
             if(args.Length() == 3){
                 Local<Array> names=args[2]->ToObject()->GetOwnPropertyNames();
@@ -1166,13 +1168,13 @@ namespace NodeHDF5 {
                     else if(name.compare("stride")==0){
                         Local<Object> strides=args[2]->ToObject()->Get(names->Get(index))->ToObject();
                         for(unsigned int arrayIndex=0;arrayIndex<strides->Get(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), "length"))->ToObject()->Uint32Value();arrayIndex++){
-                            stride.get()[arrayIndex]=strides->Get(arrayIndex)->Uint32Value();
+                            stride.push_back(strides->Get(arrayIndex)->Uint32Value());
                         }
                     }
                     else if(name.compare("count")==0){
                         Local<Object> counts=args[2]->ToObject()->Get(names->Get(index))->ToObject();
                         for(unsigned int arrayIndex=0;arrayIndex<counts->Get(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), "length"))->ToObject()->Uint32Value();arrayIndex++){
-                            count.get()[arrayIndex]=counts->Get(arrayIndex)->Uint32Value();
+                            count.push_back(counts->Get(arrayIndex)->Uint32Value());
                         }
                         subsetOn=true;
                     }
@@ -1184,31 +1186,10 @@ namespace NodeHDF5 {
                 //std::cout << std::endl;
                 
             }
-            /*
-             switch(rank)
-             {
-             case 3:
-             theSize=values_dim.get()[0]*values_dim.get()[1]*values_dim.get()[2];
-             break;
-             case 2:
-             theSize=values_dim.get()[0]*values_dim.get()[1];
-             break;
-             case 1:
-             theSize=values_dim.get()[0];
-             break;
-             case 0:
-             theSize=bufSize;
-             break;
-             default:
-             v8::Isolate::GetCurrent()->ThrowException(v8::Exception::SyntaxError(String::NewFromUtf8(v8::Isolate::GetCurrent(), "unsupported rank")));
-             args.GetReturnValue().SetUndefined();
-             return;
-             break;
-             }*/
             
             theSize=1;
             for(int rankIndex=0;rankIndex<rank;rankIndex++){
-                theSize*=values_dim.get()[rankIndex];
+                theSize*=values_dim[rankIndex];
             }
             
             switch(class_id)
@@ -1271,21 +1252,21 @@ namespace NodeHDF5 {
                         hid_t dataspace_id=H5S_ALL;
                         hid_t memspace_id=H5S_ALL;
                         hid_t basetype_id=H5Tget_super(type_id);
-                        std::unique_ptr<char*[]> tbuffer(new char*[values_dim.get()[0]]);
+                        std::unique_ptr<char*[]> tbuffer(new char*[values_dim[0]]);
                         H5Dread(did, type_id, memspace_id, dataspace_id, H5P_DEFAULT, tbuffer.get());
-                        Local<Array> array=Array::New(v8::Isolate::GetCurrent(), values_dim.get()[0]);
-                        for(unsigned int arrayIndex=0;arrayIndex<values_dim.get()[0];arrayIndex++){
+                        Local<Array> array=Array::New(v8::Isolate::GetCurrent(), values_dim[0]);
+                        for(unsigned int arrayIndex=0;arrayIndex<values_dim[0];arrayIndex++){
                             std::string s(tbuffer.get()[arrayIndex]);
                             array->Set(arrayIndex, String::NewFromUtf8(v8::Isolate::GetCurrent(), tbuffer.get()[arrayIndex],String::kNormalString, std::strlen(tbuffer.get()[arrayIndex])));
                         }
                         args.GetReturnValue().Set(array);
                         H5Tclose(basetype_id);
                     }
-                    else if(rank==1 && values_dim.get()[0]>0){
+                    else if(rank==1 && values_dim[0]>0){
                         hid_t dataspace_id=H5S_ALL;
                         hid_t memspace_id=H5S_ALL;
                         size_t typeSize=H5Tget_size(t);
-                        std::unique_ptr<char[]> tbuffer(new char[typeSize*values_dim.get()[0]]);
+                        std::unique_ptr<char[]> tbuffer(new char[typeSize*values_dim[0]]);
                         size_t nalloc;
                         H5Tencode(type_id, NULL, &nalloc);
                         H5Tencode(type_id, tbuffer.get(), &nalloc);
@@ -1301,8 +1282,8 @@ namespace NodeHDF5 {
                             args.GetReturnValue().SetUndefined();
                             return;
                         }
-                        Local<Array> array=Array::New(v8::Isolate::GetCurrent(), values_dim.get()[0]);
-                        for(unsigned int arrayIndex=0;arrayIndex<values_dim.get()[0];arrayIndex++){
+                        Local<Array> array=Array::New(v8::Isolate::GetCurrent(), values_dim[0]);
+                        for(unsigned int arrayIndex=0;arrayIndex<values_dim[0];arrayIndex++){
                             std::string s(&tbuffer.get()[typeSize*arrayIndex]);
                             array->Set(arrayIndex, String::NewFromUtf8(v8::Isolate::GetCurrent(), &tbuffer.get()[typeSize*arrayIndex],String::kNormalString, std::min(typeSize, (size_t)std::strlen(&tbuffer.get()[typeSize*arrayIndex]))));
                         }
@@ -1430,10 +1411,11 @@ namespace NodeHDF5 {
                     
                     if(subsetOn){
                         const hsize_t maxsize = H5S_UNLIMITED;
-                        memspace_id = H5Screate_simple (rank, count.get(), &maxsize);
+                        std::cout << rank << " " << count.size() << std::endl;
+                        memspace_id = H5Screate_simple (rank, count.data(), &maxsize);
                         dataspace_id = H5Dget_space (did);
                         herr_t  err = H5Sselect_hyperslab (dataspace_id, H5S_SELECT_SET, start.data(),
-                                                           stride.get(), count.get(), NULL);
+                                                           stride.data(), count.data(), NULL);
                         if(err<0)
                         {
                             if(subsetOn){
@@ -1446,26 +1428,17 @@ namespace NodeHDF5 {
                             return;
                         }
                         theSize=1;
+
                         for(int rankIndex=0;rankIndex<rank;rankIndex++){
-                            //std::cout << "rank " << rankIndex << " count " << count.get()[rankIndex] << std::endl;
-                            max_dims[rankIndex] = count.get()[rankIndex];
-                            theSize*=count.get()[rankIndex];
+                            max_dims[rankIndex] = count[rankIndex];
+                            theSize*=count[rankIndex];
                         }
-                        //std::cout << "theSize " << theSize << std::endl;
                     }
-                    /*
-                     err=H5LTread_dataset (idWrap->Value(), *dset_name, type_id, buffer->Buffer()->Externalize().Data() );
-                     if(err<0)
-                     {
-                     v8::Isolate::GetCurrent()->ThrowException(v8::Exception::SyntaxError(String::NewFromUtf8(v8::Isolate::GetCurrent(), "failed to read dataset")));
-                     args.GetReturnValue().SetUndefined();
-                     return;
-                     }
-                     
-                     */
+
                     v8::Local<v8::Object> object=v8::Object::New(v8::Isolate::GetCurrent());
                     std::unique_ptr<double> buf(new double[theSize]);
                     //v8::Local<v8::Object> buffer=node::Buffer::New(v8::Isolate::GetCurrent(),bufSize*theSize).ToLocalChecked();
+                        std::cout << dataspace_id << " " << memspace_id << std::endl;
                     err = H5Dread(did, t, memspace_id, dataspace_id, H5P_DEFAULT, buf.get());
                     //err=H5LTread_dataset (idWrap->Value(), *dset_name, type_id, (char*)node::Buffer::Data(buffer) );
                     if(err<0)
@@ -1505,83 +1478,18 @@ namespace NodeHDF5 {
                     switch(rank)
                 {
                     case 3:
-                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "rows"), Number::New(v8::Isolate::GetCurrent(), values_dim.get()[2]));
-                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "columns"), Number::New(v8::Isolate::GetCurrent(), values_dim.get()[1]));
-                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "sections"), Number::New(v8::Isolate::GetCurrent(), values_dim.get()[0]));
+                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "rows"), Number::New(v8::Isolate::GetCurrent(), values_dim[2]));
+                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "columns"), Number::New(v8::Isolate::GetCurrent(), values_dim[1]));
+                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "sections"), Number::New(v8::Isolate::GetCurrent(), values_dim[0]));
                         break;
                     case 2:
-                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "rows"), Number::New(v8::Isolate::GetCurrent(), values_dim.get()[1]));
-                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "columns"), Number::New(v8::Isolate::GetCurrent(), values_dim.get()[0]));
+                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "rows"), Number::New(v8::Isolate::GetCurrent(), values_dim[1]));
+                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "columns"), Number::New(v8::Isolate::GetCurrent(), values_dim[0]));
                         break;
                     case 1:
-                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "rows"), Number::New(v8::Isolate::GetCurrent(), values_dim.get()[0]));
+                        object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "rows"), Number::New(v8::Isolate::GetCurrent(), values_dim[0]));
                         break;
                 }
-                    /*
-                     if(args.Length() ==3){
-                     v8::Persistent<v8::Function> callback;
-                     const unsigned argc = 2;
-                     callback.Reset(v8::Isolate::GetCurrent(), args[2].As<Function>());
-                     v8::Local<v8::Object> options=v8::Object::New(v8::Isolate::GetCurrent());
-                     options->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "rank"), Number::New(v8::Isolate::GetCurrent(), rank));
-                     H5T_order_t order=H5Tget_order( type_id );
-                     options->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "endian"), Number::New(v8::Isolate::GetCurrent(), order));
-                     //options->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), "interlace"), String::NewFromUtf8(v8::Isolate::GetCurrent(), interlace));
-                     
-                     v8::Local<v8::Value> argv[1] = { options };
-                     v8::Local<v8::Function>::New(v8::Isolate::GetCurrent(), callback)->Call(v8::Isolate::GetCurrent()->GetCurrentContext()->Global(), argc, argv);
-                     }*/
-                    
-                    //Attributes
-                    /*
-                     uint32_t index=0;
-                     hsize_t idx=0;
-                     std::vector<std::string> holder;
-                     //        group->m_group.iterateAttrs([&](H5::H5Location &loc, H5std_string attr_name, void *operator_data){
-                     //            ((std::vector<std::string>*)operator_data)->push_back(attr_name);
-                     //        }, &index, &holder);
-                     H5Aiterate_by_name(idWrap->Value(), *dset_name, H5_INDEX_CRT_ORDER ,
-                     H5_ITER_INC , &idx, [] (hid_t location_id, const char* attr_name, const H5A_info_t *ainfo, void *operator_data){
-                     if(ainfo->data_size>0)((std::vector<std::string>*)operator_data)->push_back(std::string(attr_name));
-                     return (herr_t)((std::vector<std::string>*)operator_data)->size();
-                     }, (void*)&holder, H5P_DEFAULT);
-                     for(index=0;index<(uint32_t)holder.size();index++)
-                     {
-                     hsize_t values_dim[1] = {1};
-                     size_t bufSize = 0;
-                     H5T_class_t class_id;
-                     err = H5LTget_attribute_info(idWrap->Value(), *dset_name, holder[index].c_str(), values_dim, &class_id, &bufSize);
-                     if (err >=0) {
-                     switch(class_id)
-                     {
-                     case H5T_INTEGER:
-                     long long intValue;
-                     H5LTget_attribute_int(idWrap->Value(), *dset_name, holder[index].c_str(), (int*)&intValue);
-                     object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), holder[index].c_str()), Int32::New(v8::Isolate::GetCurrent(), intValue));
-                     break;
-                     case H5T_FLOAT:
-                     double value;
-                     H5LTget_attribute_double(idWrap->Value(), *dset_name, holder[index].c_str(), &value);
-                     object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), holder[index].c_str()), Number::New(v8::Isolate::GetCurrent(), value));
-                     break;
-                     case H5T_STRING:
-                     {
-                     std::string strValue(bufSize+1,'\0');
-                     H5LTget_attribute_string(idWrap->Value(), *dset_name, holder[index].c_str(), (char *)strValue.c_str());
-                     object->Set(String::NewFromUtf8(v8::Isolate::GetCurrent(), holder[index].c_str()), String::NewFromUtf8(v8::Isolate::GetCurrent(), strValue.c_str()));
-                     }
-                     break;
-                     case H5T_NO_CLASS:
-                     default:
-                     //                    v8::Isolate::GetCurrent()->ThrowException(v8::Exception::SyntaxError(String::NewFromUtf8(v8::Isolate::GetCurrent(), "unsupported data type")));
-                     //                    args.GetReturnValue().SetUndefined();
-                     //                            return;
-                     break;
-                     }
-                     }
-                     }
-                     */
-                    //
                     args.GetReturnValue().Set(object);
                     break;
             }

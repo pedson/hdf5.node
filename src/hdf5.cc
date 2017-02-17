@@ -3,6 +3,7 @@
 #include "group.h"
 #include "filters.hpp"
 #include "hdf5node.hpp"
+#include "h5_dataset.hpp"
 
 using namespace v8;
 using namespace NodeHDF5;
@@ -20,7 +21,8 @@ extern "C" {
         File::Initialize(target);
         Filters::Init(target);
         Int64::Initialize(target);
-        
+        H5D::Initialize(target);
+
         // initialize wrapped object factories
         Group::Initialize();
         

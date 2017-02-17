@@ -23,7 +23,7 @@
                     'src/attributes.cc',
                     'src/methods.cc',
                     'src/h5_file.cc',
-                    'src/h5_group.cc',
+                    'src/h5_group.cc'
                 ],
                 'link_settings': {
                     'libraries': [
@@ -49,7 +49,7 @@
                     'src/attributes.cc',
                     'src/methods.cc',
                     'src/h5_file.cc',
-                    'src/h5_group.cc',
+                    'src/h5_group.cc'
                 ],
                 'msbuild_toolset': 'v120',
                 "configurations": {
@@ -100,7 +100,7 @@
                     'src/attributes.cc',
                     'src/methods.cc',
                     'src/h5_file.cc',
-                    'src/h5_group.cc',
+                    'src/h5_group.cc'
                 ],
                 'libraries': [
                     '<(hdf5_home_mac)/lib/libhdf5.dylib',
