@@ -89,6 +89,12 @@ namespace NodeHDF5 {
             std::vector<hsize_t> values_dim(rank);
             err = H5LTget_dataset_info(idWrap->Value(), *dataset_name, values_dim.data(), &class_id, &bufSize);
 
+            v8::Local<v8::Array> array = v8::Array::New(v8::Isolate::GetCurrent(), rank);
+
+            for(int dimIndex = 0; dimIndex < rank; dimIndex++){
+                array->Set(dimIndex, v8::Number::New(v8::Isolate::GetCurrent(), values_dim[dimIndex]));
+            }
+
             if(err < 0)
             {
                 v8::Isolate::GetCurrent()->ThrowException(v8::Exception::SyntaxError(String::NewFromUtf8(v8::Isolate::GetCurrent(), "failed to find dataset info")));
@@ -96,8 +102,6 @@ namespace NodeHDF5 {
                 return;
             }
 
-            std::vector<hsize_t> start;
-            std::vector<hsize_t> stride;
             std::vector<hsize_t> count;
 
             if(args.Length() == 3){
@@ -105,19 +109,7 @@ namespace NodeHDF5 {
                 for(uint32_t index=0;index<names->Length();index++){
                     String::Utf8Value _name (names->Get(index));
                     std::string name(*_name);
-                    if(name.compare("start")==0){
-                        Local<Object> starts=args[2]->ToObject()->Get(names->Get(index))->ToObject();
-                        for(unsigned int arrayIndex=0;arrayIndex<starts->Get(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), "length"))->ToObject()->Uint32Value();arrayIndex++){
-                            start.push_back(starts->Get(arrayIndex)->Uint32Value());
-                        }
-                    }
-                    else if(name.compare("stride")==0){
-                        Local<Object> strides=args[2]->ToObject()->Get(names->Get(index))->ToObject();
-                        for(unsigned int arrayIndex=0;arrayIndex<strides->Get(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), "length"))->ToObject()->Uint32Value();arrayIndex++){
-                            stride.push_back(strides->Get(arrayIndex)->Uint32Value());
-                        }
-                    }
-                    else if(name.compare("count")==0){
+                    if(name.compare("count")==0){
                         Local<Object> counts=args[2]->ToObject()->Get(names->Get(index))->ToObject();
                         for(unsigned int arrayIndex=0;arrayIndex<counts->Get(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), "length"))->ToObject()->Uint32Value();arrayIndex++){
                             count.push_back(counts->Get(arrayIndex)->Uint32Value());
@@ -125,6 +117,7 @@ namespace NodeHDF5 {
                     }
                 }
             }
+
 
             hid_t did = H5Dopen(idWrap->Value(), *dataset_name, H5P_DEFAULT);
             hid_t type_id;
@@ -207,6 +200,8 @@ namespace NodeHDF5 {
             object->Set(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), "dataspace"), dataspaceIdInstance);
 
             object->Set(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), "rank"), Number::New(v8::Isolate::GetCurrent(), rank));
+
+            object->Set(v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), "dims"), array);
 
             args.GetReturnValue().Set(object);
         }
@@ -320,6 +315,5 @@ namespace NodeHDF5 {
             Int64 * datasetWrap = ObjectWrap::Unwrap<Int64>(args[2]->ToObject());
             H5Dclose(datasetWrap->Value());
         }
-
     };
 }
