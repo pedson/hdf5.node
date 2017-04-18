@@ -175,8 +175,11 @@ namespace NodeHDF5 {
 
             std::vector<hsize_t> max_dims(rank);
 
-            const hsize_t maxsize = H5S_UNLIMITED;
-            memspace_id = H5Screate_simple (rank, count.data(), &maxsize);
+            for(int rankIndex=0; rankIndex < rank; rankIndex++){
+                max_dims[rankIndex] = H5S_UNLIMITED;
+            }
+
+            memspace_id = H5Screate_simple (rank, count.data(), max_dims.data());
             dataspace_id = H5Dget_space (did);
 
             v8::Local<v8::Object> object = v8::Object::New(v8::Isolate::GetCurrent());
