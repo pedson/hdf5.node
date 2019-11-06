@@ -9,13 +9,14 @@
   },
   "devDependencies": {
     "co-mocha": "^1.1.2",
-    "mocha": "2.4.5",
+    "mocha": "^6.2.2",
     "should": "*",
     "xml2js": "*"
   },
   "scripts": {
     "install": "node-gyp rebuild --jobs max",
-    "test": "mocha test"
+    "test": "mocha test",
+    "dev": "node $NODE_DEBUG_OPTION dev_4d_and_attr.js"
   },
   "contributors": [
     "Ryan Cole <ryan@rycole.com> (https://github.com/ryancole/)",

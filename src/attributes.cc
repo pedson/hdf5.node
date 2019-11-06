@@ -272,7 +272,6 @@ namespace NodeHDF5{
                         break;
                 }
                 break;
-            case H5T_NO_CLASS:
             default:
                 break;
         }
